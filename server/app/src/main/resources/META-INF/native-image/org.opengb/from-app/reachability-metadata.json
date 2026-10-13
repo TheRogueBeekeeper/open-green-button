@@ -2394,6 +2394,21 @@
       "type": "org.opengb.utility.TokenAuthStyle"
     },
     {
+      "type": "org.opengb.utility.UtilityApiConfig",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.sksamuel.hoplite.Secret",
+            "java.lang.String",
+            "java.lang.String",
+            "int",
+            "kotlin.jvm.internal.DefaultConstructorMarker"
+          ]
+        }
+      ]
+    },
+    {
       "type": "org.opengb.utility.UtilityProfile",
       "methods": [
         {
@@ -2413,6 +2428,7 @@
             "java.lang.String",
             "org.opengb.utility.TokenAuthStyle",
             "org.opengb.config.ClientAuthConfig",
+            "org.opengb.utility.UtilityApiConfig",
             "org.opengb.utility.UtilityQuirks",
             "int",
             "kotlin.jvm.internal.DefaultConstructorMarker"
