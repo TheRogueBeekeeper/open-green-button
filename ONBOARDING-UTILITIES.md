@@ -105,6 +105,10 @@ Both are covered in [Legal](README.md#legal); please read that section before yo
 
    If you are asked for the **information sharing period**, choose "Daily" (this is the same thing as `SubscriptionFrequency=Daily` above).
 
+   If you are asked for outbound IP addresses for whitelisting purposes, provide the following two:
+   * 66.241.124.53
+   * 2a09:8280:1::119:c85b:0
+
 1. Create a utility documentation page at https://github.com/rocketraman/open-green-button/tree/master/docs/utilities (example https://github.com/rocketraman/open-green-button/blob/master/docs/utilities/milton-hydro.md).
 Note yourself as the "Information on File" for the utility.
 This is so the community knows whose information each utility has on record.
