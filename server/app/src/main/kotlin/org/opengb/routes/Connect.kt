@@ -10,6 +10,7 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.launch
 import kotlinx.html.HTML
 import kotlinx.html.a
 import kotlinx.html.blockQuote
@@ -116,32 +117,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleCallback(deps: A
   val code = call.request.queryParameters["code"]
   val error = call.request.queryParameters["error"]
 
-  if (error != null) {
-    // RFC 6749 §4.1.2.1: the utility explains the failure in `error_description`. Without it the
-    // customer sees only e.g. "server_error" and can't tell the fault is on the utility's side.
-    val description =
-      call.request.queryParameters["error_description"]
-        ?.trim()
-        ?.take(MAX_ERROR_DESCRIPTION_LENGTH)
-        ?.takeIf { it.isNotEmpty() }
-    // The flow is dead either way, so consume the state. Only echo the description when the state
-    // is one we issued for this utility — otherwise anyone could craft a link that renders
-    // arbitrary text on our domain.
-    val pending = state?.let { deps.stateStore.consume(it) }
-    val trusted = pending?.utilityId == utility.id
-    // Both values are caller-supplied; collapse whitespace so they can't forge log lines.
-    val whitespace = Regex("\\s+")
-    connectLog.warn(
-      "authorize error utility=${utility.id} error=${error.take(100).replace(whitespace, " ")} " +
-        "stateKnown=$trusted description=${description?.replace(whitespace, " ")}",
-    )
-    call.respondCallbackError(
-      "Utility returned error: $error",
-      detail = description.takeIf { trusted },
-      detailSource = utility.displayName,
-    )
-    return
-  }
+  if (error != null) return handleAuthorizeError(deps, utility, state, error)
   if (state.isNullOrBlank() || code.isNullOrBlank()) {
     call.respondCallbackError("Missing 'state' or 'code' query parameter.")
     return
@@ -158,6 +134,10 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleCallback(deps: A
   }
 
   val refreshBlob = exchangeAndBuildBlob(deps, utility, code) ?: return
+  // The customer has just authorized, so the utility has a meter it is not yet monitoring. Beside
+  // the response, not in it: the claim page owes nothing to how this turns out. See
+  // [org.opengb.proxy.UtilityApiMonitoring].
+  call.application.launch { deps.utilityApiMonitoring.ensureMonitored(utility) }
   val encrypted = deps.crypto.encrypt(refreshBlob)
   val proxyToken = deps.crypto.deriveProxyToken(refreshBlob)
   val claimCode =
@@ -179,6 +159,38 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleCallback(deps: A
       haInitiated = pending.haNonce != null,
     )
   }
+}
+
+/** The utility sent the customer back with an OAuth `error` instead of a code. */
+private suspend fun io.ktor.server.routing.RoutingContext.handleAuthorizeError(
+  deps: AppDeps,
+  utility: UtilityProfile,
+  state: String?,
+  error: String,
+) {
+  // RFC 6749 §4.1.2.1: the utility explains the failure in `error_description`. Without it the
+  // customer sees only e.g. "server_error" and can't tell the fault is on the utility's side.
+  val description =
+    call.request.queryParameters["error_description"]
+      ?.trim()
+      ?.take(MAX_ERROR_DESCRIPTION_LENGTH)
+      ?.takeIf { it.isNotEmpty() }
+  // The flow is dead either way, so consume the state. Only echo the description when the state
+  // is one we issued for this utility — otherwise anyone could craft a link that renders
+  // arbitrary text on our domain.
+  val pending = state?.let { deps.stateStore.consume(it) }
+  val trusted = pending?.utilityId == utility.id
+  // Both values are caller-supplied; collapse whitespace so they can't forge log lines.
+  val whitespace = Regex("\\s+")
+  connectLog.warn(
+    "authorize error utility=${utility.id} error=${error.take(100).replace(whitespace, " ")} " +
+      "stateKnown=$trusted description=${description?.replace(whitespace, " ")}",
+  )
+  call.respondCallbackError(
+    "Utility returned error: $error",
+    detail = description.takeIf { trusted },
+    detailSource = utility.displayName,
+  )
 }
 
 /** 404s on unknown utility and returns null so the caller can `return`. */

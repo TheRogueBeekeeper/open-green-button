@@ -18,7 +18,6 @@ import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.apache.logging.log4j.kotlin.logger
 import org.apache.logging.log4j.message.StringMapMessage
@@ -185,9 +184,6 @@ private suspend fun RoutingContext.handleProxyUsage(
     )
   }
   val fetch = prepareFetch(deps, request) ?: return
-  // Off the request path: it concerns the utility's meters as a whole, not this response, and
-  // what it changes only shows up in a later poll. See [org.opengb.proxy.UtilityApiMonitoring].
-  call.application.launch { deps.utilityApiMonitoring.ensureMonitored(fetch.utility) }
   val resourceUri = resourceUriFor(fetch.subscriptionUri, request.resourcePath)
   call.streamResource(usageClient, deps, fetch, resourceUri, request)
 }

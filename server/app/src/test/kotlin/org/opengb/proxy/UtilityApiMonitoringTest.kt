@@ -19,9 +19,6 @@ import org.opengb.observability.captureLogs
 import org.opengb.utility.UtilityApiConfig
 import org.opengb.utility.UtilityProfile
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.TestTimeSource
 
 private const val API = "https://utilityapi.mock"
 private const val LIST_URL = "$API/api/v2/meters"
@@ -94,31 +91,6 @@ val UtilityApiMonitoringTest by testSuite {
       }
     api.monitoring().ensureMonitored(utility())
     assert(api.requests.map { it.method } == listOf(HttpMethod.Get))
-  }
-
-  test("a burst of polls sweeps once, and again only after the interval") {
-    val clock = TestTimeSource()
-    val api = FakeUtilityApi { json("""{"meters": [], "next": null}""") }
-    val monitoring = UtilityApiMonitoring(api.clients, minInterval = 1.hours, timeSource = clock)
-
-    repeat(3) { monitoring.ensureMonitored(utility()) }
-    assert(api.requests.size == 1)
-
-    clock += 59.minutes
-    monitoring.ensureMonitored(utility())
-    assert(api.requests.size == 1)
-
-    clock += 1.minutes
-    monitoring.ensureMonitored(utility())
-    assert(api.requests.size == 2)
-  }
-
-  test("each utility is throttled on its own") {
-    val api = FakeUtilityApi { json("""{"meters": [], "next": null}""") }
-    val monitoring = api.monitoring()
-    monitoring.ensureMonitored(utility("elpaso"))
-    monitoring.ensureMonitored(utility("eversource"))
-    assert(api.requests.size == 2)
   }
 
   test("a utility with no API token is left alone") {

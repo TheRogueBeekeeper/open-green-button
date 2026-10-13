@@ -23,10 +23,7 @@ import io.ktor.http.headersOf
 import io.ktor.http.parseQueryString
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteReadChannel
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import org.opengb.appModule
 import org.opengb.buildAppDeps
@@ -42,12 +39,10 @@ import org.opengb.proxy.TokenCrypto
 import org.opengb.utility.DateFilterFormat
 import org.opengb.utility.RefreshScope
 import org.opengb.utility.TokenAuthStyle
-import org.opengb.utility.UtilityApiConfig
 import org.opengb.utility.UtilityProfile
 import org.opengb.utility.UtilityQuirks
 import java.util.Base64
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
@@ -601,36 +596,6 @@ val ProxyUsageTest by testSuite {
     val parsed = capturedUrl ?: error("resource server was not called")
     assert(parsed.encodedPath == "/espi/1_1/resource/Batch/Subscription/42") { parsed.toString() }
   }
-
-  test("a poll of a UtilityAPI-hosted utility sets off the monitoring sweep with the API token") {
-    // The sweep runs beside the response, not inside it, so it is awaited rather than assumed.
-    val swept = CompletableDeferred<HttpRequestData>()
-    runProxyUsage(
-      utilityApi = UtilityApiConfig(apiToken = Masked("api_token_xyz"), apiBaseUrl = "https://utility.mock"),
-      captureUtilityApiRequest = { swept.complete(it) },
-    ) { client, ctx ->
-      val resp = client.postProxyUsage(ctx.proxyToken, ctx.encryptedBlob)
-      assert(resp.status == HttpStatusCode.OK) { resp.bodyAsText() }
-      // The mock answers the listing with an error; a failed sweep must not have touched the poll.
-      assert(resp.bodyAsText() == MOCK_USAGE_FEED)
-      val request = withTimeout(5.seconds) { swept.await() }
-      assert(request.url.toString() == "https://utility.mock/api/v2/meters") { request.url.toString() }
-      assert(request.headers[HttpHeaders.Authorization] == "Bearer api_token_xyz")
-    }
-  }
-
-  test("a poll that fails authentication does not set off the monitoring sweep") {
-    var swept = false
-    runProxyUsage(
-      utilityApi = UtilityApiConfig(apiToken = Masked("api_token_xyz"), apiBaseUrl = "https://utility.mock"),
-      captureUtilityApiRequest = { swept = true },
-    ) { client, ctx ->
-      val resp = client.postProxyUsage("not-the-proxy-token", ctx.encryptedBlob)
-      assert(resp.status == HttpStatusCode.Unauthorized) { resp.bodyAsText() }
-      delay(100.milliseconds)
-      assert(!swept) { "an unauthenticated caller must not be able to make us call UtilityAPI" }
-    }
-  }
 }
 
 private data class ProxyUsageCtx(
@@ -696,9 +661,6 @@ private fun runProxyUsage(
   // A notification body the "custodian" POSTs to /notify/mock WHILE it is still answering the
   // resource GET — the order a real async-batch custodian does it in.
   notifyDuringFetch: String? = null,
-  // UtilityAPI JSON-API access for the mock utility, and a tap on the requests made with it.
-  utilityApi: UtilityApiConfig? = null,
-  captureUtilityApiRequest: ((HttpRequestData) -> Unit)? = null,
   block: suspend (io.ktor.client.HttpClient, ProxyUsageCtx) -> Unit,
 ) {
   var appClient: HttpClient? = null
@@ -714,7 +676,6 @@ private fun runProxyUsage(
       defaultScope = "FB=1;IntervalDuration=900",
       refreshScope = refreshScope,
       tokenAuthStyle = TokenAuthStyle.HTTP_BASIC,
-      utilityApi = utilityApi,
       quirks = quirks,
     )
 
@@ -730,7 +691,6 @@ private fun runProxyUsage(
           if (notifyDuringFetch != null && request.url.encodedPath.contains("/Batch/Subscription/")) {
             checkNotNull(appClient).post("/notify/mock") { setBody(notifyDuringFetch) }
           }
-          if (request.url.encodedPath.startsWith("/api/v2/")) captureUtilityApiRequest?.invoke(request)
           handleMockRequest(
             request,
             tokenEndpointStatus,

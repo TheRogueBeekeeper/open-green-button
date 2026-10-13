@@ -21,11 +21,6 @@ import org.apache.logging.log4j.message.StringMapMessage
 import org.opengb.http.UtilityHttpClients
 import org.opengb.utility.UtilityApiConfig
 import org.opengb.utility.UtilityProfile
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 
 private val monitoringLog = logger("opengb.utilityapi")
 
@@ -34,34 +29,27 @@ private val monitoringLog = logger("opengb.utilityapi")
  * goes on collecting it after the one collection it does at authorization. See [UtilityApiConfig]
  * for why that is needed at all.
  *
- * It works on the whole registration rather than on the caller's own meters: list the
- * registration's meters, enrol the ones nobody is monitoring. The proxy never parses a usage feed,
- * so it has no way to tell which meters belong to the request in hand — and a sweep also picks up
- * what a per-caller enrolment would miss: authorizations made before this existed, and a meter
- * added later to an account authorized with `meters-all`.
+ * It works on the whole registration rather than on one customer's meters: list the registration's
+ * meters, enrol the ones nobody is monitoring. The OAuth exchange names a subscription, not its
+ * meters, so there is nothing narrower to act on — and a sweep also catches anything an earlier
+ * one missed.
  *
- * Triggered by a client's poll, not by a timer: the server scales to zero and has no clock of its
- * own, and a poll is exactly when there is someone to keep data flowing for. [ensureMonitored] is
- * throttled per utility so a burst of polls costs one sweep. The throttle is in-process and resets
- * on every cold start, which is fine — a sweep that finds nothing to do is a single GET.
+ * Run when an authorization completes (see `routes/Connect.kt`), because that is the moment a new,
+ * unmonitored meter comes into being. Deliberately NOT run on every poll: that would list the
+ * whole registration once per client per day to find, almost always, nothing. The cost of the
+ * choice is that a meter which appears without a new authorization — one added later to an account
+ * authorized with `meters-all` — stays unmonitored until the next authorization at that utility.
  *
- * Holds no per-user state, and nothing here may fail a poll: every outcome is logged and swallowed.
+ * Holds no state, and nothing here may fail the authorization: every outcome is logged and
+ * swallowed.
  */
 class UtilityApiMonitoring(
   private val clients: UtilityHttpClients,
-  private val minInterval: Duration = DEFAULT_MIN_INTERVAL,
-  private val timeSource: TimeSource = TimeSource.Monotonic,
 ) {
-  private val lastSweep = ConcurrentHashMap<String, TimeMark>()
-
-  /**
-   * Enrol [utility]'s unmonitored meters, unless it has no API token or was swept recently.
-   * Never throws (other than cancellation).
-   */
+  /** Enrol [utility]'s unmonitored meters, if it has an API token. Never throws (other than cancellation). */
   @Suppress("TooGenericExceptionCaught") // best-effort by design: no failure here may reach the caller
   suspend fun ensureMonitored(utility: UtilityProfile) {
     val config = utility.utilityApi?.takeIf { it.hasToken() } ?: return
-    if (!claimSweep(utility.id)) return
     try {
       val outcome = sweep(clients.forUtility(utility), config)
       monitoringLog.info(
@@ -82,20 +70,6 @@ class UtilityApiMonitoring(
         },
       )
     }
-  }
-
-  /** True if this call won the right to sweep [utilityId] now; the attempt counts even if it fails. */
-  private fun claimSweep(utilityId: String): Boolean {
-    var claimed = false
-    lastSweep.compute(utilityId) { _, previous ->
-      if (previous == null || previous.elapsedNow() >= minInterval) {
-        claimed = true
-        timeSource.markNow()
-      } else {
-        previous
-      }
-    }
-    return claimed
   }
 
   private suspend fun sweep(
@@ -144,8 +118,6 @@ class UtilityApiMonitoring(
   )
 
   private companion object {
-    val DEFAULT_MIN_INTERVAL = 1.hours
-
     // Bounds one sweep against a listing that never ends; far above any registration we have.
     const val MAX_PAGES = 50
     const val ENROL_BATCH_SIZE = 100

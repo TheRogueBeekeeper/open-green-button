@@ -6,6 +6,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
+import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -16,7 +17,10 @@ import io.ktor.http.headersOf
 import io.ktor.http.parseQueryString
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.opengb.config.AppConfig
 import org.opengb.config.CryptoConfig
 import org.opengb.config.LandingConfig
@@ -24,8 +28,11 @@ import org.opengb.config.ServerConfig
 import org.opengb.config.StateConfig
 import org.opengb.proxy.TokenCrypto
 import org.opengb.utility.TokenAuthStyle
+import org.opengb.utility.UtilityApiConfig
 import org.opengb.utility.UtilityProfile
 import java.util.Base64
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * End-to-end test of the OAuth + claim code flow with a mock utility:
@@ -269,6 +276,48 @@ val OAuthFlowEndToEndTest by testSuite {
       assert(html.contains("Paste this code", ignoreCase = true)) { html }
     }
   }
+
+  test("a completed authorization at a UtilityAPI-hosted utility sets off the monitoring sweep") {
+    // The sweep runs beside the response, not inside it, so it is awaited rather than assumed.
+    val swept = CompletableDeferred<HttpRequestData>()
+    runE2E(
+      utilityApi = UtilityApiConfig(apiToken = Masked("api_token_xyz"), apiBaseUrl = "https://utility.mock"),
+      captureUtilityApiRequest = { swept.complete(it) },
+    ) { client, _ ->
+      val location =
+        client.get("/connect/mock/start").headers[HttpHeaders.Location]
+          ?: error("Location header missing")
+      val state = parseQueryString(location.substringAfter('?', ""))["state"]!!
+      val resp =
+        client.get("/connect/mock/callback") {
+          parameter("code", "auth_code_123")
+          parameter("state", state)
+        }
+      // The mock answers the listing with an error; a failed sweep must not cost the claim page.
+      assert(resp.status == HttpStatusCode.OK) { resp.bodyAsText() }
+      assert(extractClaimCode(resp.bodyAsText()) != null)
+      val request = withTimeout(5.seconds) { swept.await() }
+      assert(request.url.toString() == "https://utility.mock/api/v2/meters") { request.url.toString() }
+      assert(request.headers[HttpHeaders.Authorization] == "Bearer api_token_xyz")
+    }
+  }
+
+  test("a callback that completes no authorization does not set off the monitoring sweep") {
+    var swept = false
+    runE2E(
+      utilityApi = UtilityApiConfig(apiToken = Masked("api_token_xyz"), apiBaseUrl = "https://utility.mock"),
+      captureUtilityApiRequest = { swept = true },
+    ) { client, _ ->
+      val resp =
+        client.get("/connect/mock/callback") {
+          parameter("code", "auth_code_123")
+          parameter("state", "not-a-state-we-issued")
+        }
+      assert(resp.status == HttpStatusCode.BadRequest) { resp.bodyAsText() }
+      delay(100.milliseconds)
+      assert(!swept) { "anyone can hit the callback; only a real authorization may make us call UtilityAPI" }
+    }
+  }
 }
 
 private data class TestCtx(
@@ -284,11 +333,14 @@ private data class TestCtx(
 // `omitScope` simulates a pre-negotiated (FB_14 legacy) auth flow where the utility doesn't
 // echo the granted scope back in the token response. The default exercises the modern flow
 // (FB_31) where the utility includes the granted scope.
-@Suppress("LongMethod")
+@Suppress("LongMethod", "LongParameterList")
 private fun runE2E(
   omitScope: Boolean = false,
   defaultScope: String? = "FB=1;IntervalDuration=900",
   registeredScope: String? = null,
+  // UtilityAPI JSON-API access for the mock utility, and a tap on the requests made with it.
+  utilityApi: UtilityApiConfig? = null,
+  captureUtilityApiRequest: ((HttpRequestData) -> Unit)? = null,
   block: suspend (io.ktor.client.HttpClient, TestCtx) -> Unit,
 ) {
   val publicBaseUrl = "http://test.local"
@@ -303,6 +355,7 @@ private fun runE2E(
       defaultScope = defaultScope,
       registeredScope = registeredScope ?: defaultScope ?: "",
       tokenAuthStyle = TokenAuthStyle.HTTP_BASIC,
+      utilityApi = utilityApi,
     )
 
   val scopeField =
@@ -325,6 +378,7 @@ private fun runE2E(
               headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
           } else {
+            if (request.url.encodedPath.startsWith("/api/v2/")) captureUtilityApiRequest?.invoke(request)
             respondError(HttpStatusCode.NotImplemented)
           }
         }
