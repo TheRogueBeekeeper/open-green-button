@@ -106,6 +106,9 @@
       ]
     },
     {
+      "type": "com.sksamuel.hoplite.Secret"
+    },
+    {
       "type": "com.sksamuel.hoplite.decoder.Base64Decoder"
     },
     {
@@ -2646,7 +2649,13 @@
       ]
     },
     {
+      "type": "org.opengb.proxy.FakeUtilityApi"
+    },
+    {
       "type": "org.opengb.proxy.TokenCryptoTestKt"
+    },
+    {
+      "type": "org.opengb.proxy.UtilityApiMonitoringTestKt"
     },
     {
       "type": "org.opengb.routes.ByteReadChannelContent"
@@ -2827,6 +2836,35 @@
             "org.opengb.utility.RefreshScope",
             "int",
             "kotlin.jvm.internal.DefaultConstructorMarker"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.opengb.utility.UtilityApiConfig",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.sksamuel.hoplite.Secret",
+            "java.lang.String",
+            "java.lang.String",
+            "int",
+            "kotlin.jvm.internal.DefaultConstructorMarker"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.opengb.utility.UtilityApiConfigTestKt"
+    },
+    {
+      "type": "org.opengb.utility.UtilityApiHolder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.opengb.utility.UtilityApiConfig"
           ]
         }
       ]
