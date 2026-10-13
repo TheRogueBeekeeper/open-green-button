@@ -28,6 +28,7 @@ import org.opengb.observability.installAccessLog
 import org.opengb.proxy.BatchNotifications
 import org.opengb.proxy.TokenCrypto
 import org.opengb.proxy.UsageClient
+import org.opengb.proxy.UtilityApiMonitoring
 import org.opengb.routes.installCanonicalHost
 import org.opengb.routes.installClaim
 import org.opengb.routes.installConnect
@@ -56,6 +57,7 @@ data class AppDeps(
   val usageClient: UsageClient,
   val logRedactor: LogRedactor,
   val batchNotifications: BatchNotifications,
+  val utilityApiMonitoring: UtilityApiMonitoring,
 )
 
 fun buildAppDeps(
@@ -84,6 +86,7 @@ fun buildAppDeps(
     usageClient,
     LogRedactor(config.crypto),
     batchNotifications,
+    UtilityApiMonitoring(httpClients),
   )
 }
 
@@ -123,6 +126,7 @@ val opengbModule =
     bind<OAuthClient> { singleton { OAuthClient(instance()) } }
     bind<UsageClient> { singleton { UsageClient(instance()) } }
     bind<BatchNotifications> { singleton { BatchNotifications() } }
+    bind<UtilityApiMonitoring> { singleton { UtilityApiMonitoring(instance()) } }
     bind<LogRedactor> { singleton { LogRedactor(instance<AppConfig>().crypto) } }
     bind<AppDeps> {
       singleton {
@@ -137,6 +141,7 @@ val opengbModule =
           usageClient = instance(),
           logRedactor = instance(),
           batchNotifications = instance(),
+          utilityApiMonitoring = instance(),
         )
       }
     }

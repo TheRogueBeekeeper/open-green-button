@@ -73,6 +73,11 @@ data class UtilityProfile(
    * self-signed default). Absent / no keystore ⇒ fall back to the default block.
    */
   val clientAuth: ClientAuthConfig? = null,
+  /**
+   * Set for a utility whose Green Button service is hosted by UtilityAPI: the registration's API
+   * token, used to keep its meters enrolled in ongoing monitoring. See [UtilityApiConfig].
+   */
+  val utilityApi: UtilityApiConfig? = null,
   val quirks: UtilityQuirks = UtilityQuirks(),
 ) {
   /** [initialHistory] parsed to seconds. Throws if the configured spec is malformed. */
