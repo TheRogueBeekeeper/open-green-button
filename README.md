@@ -6,29 +6,42 @@ The hosted server is a **stateless OAuth proxy**: utilities require a stable pub
 
 ## Status
 
-* ✅ **Live!** Alectra (Ontario, Canada).
-* ✅ **Live!** Burlington Hydro (Ontario, Canada).
-* ✅ **Live!** Consumers Energy (Michigan, USA), thank you Michael Phillippi ([@philliml74](https://github.com/philliml74)).
-* ✅ **Live!** Elexicon Energy (Ontario, Canada), thank you Muhammad Aziz ([@rabbitholelabsinc](https://github.com/rabbitholelabsinc)).
-* ✅ **Live!** Elk Energy (Ontario, Canada).
-* ✅ **Live!** El Paso Electric (New Mexico / Texas, USA).
-* ✅ **Live!** Enova (Ontario, Canada), thank you Kate Kennedy ([@kennek6](https://github.com/kennek6)).
-* ✅ **Live!** Enwin (Ontario, Canada).
-* ✅ **Live!** Eversource (Massachusetts, USA), thank you Devin Kelly ([@dwwkelly](https://github.com/dwwkelly)).
-* ✅ **Live!** Festival Hydro (Ontario, Canada).
-* ✅ **Live!** Grand Bridge Energy (Ontario, Canada), thank you Grant Emsley ([@grantemsley](https://github.com/grantemsley)).
-* ✅ **Live!** Hydro Ottawa (Ontario, Canada), thank you Mike Wrightly ([@mikewrightly](https://github.com/mikewrightly)).
-* ✅ **Live!** Kentucky Utilities (Kentucky, USA), thank you Tag Howard ([@jthoward64](https://github.com/jthoward64)).
-* ✅ **Live!** London Hydro (Ontario, Canada).
-* ✅ **Live!** Milton Hydro (Ontario, Canada), thank you Jeff Aycan ([@JAudi23](https://github.com/JAudi23)).
-* ✅ **Live!** Newmarket-Tay (NT) Power (Ontario, Canada).
-* ✅ **Live!** Niagara Peninsula Energy (Ontario, Canada).
-* ✅ **Live!** Oakville Hydro (Ontario, Canada).
-* ✅ **Live!** Oshawa Power (Ontario, Canada).
-* ✅ **Live!** Toronto Hydro (Ontario, Canada), thank you Mathew Lisk ([@Mlisk](https://github.com/Mlisk)).
-* 🚧 **Registration in progress** El Paso Electric (New Mexico / Texas, USA).
-* 🚧 **Registration in progress** Fortis Ontario (Algoma Power, Canadian Niagara Power, Cornwall Electric, Eastern Ontario Power) (Ontario, Canada), thank you William Seaton ([@william-seaton](https://github.com/william-seaton)).
-* 🚧 **Registration in progress** Pacific Gas & Electric (California).
+### Live ✅
+
+The following utilities are available to use now:
+
+* Alectra (Ontario, Canada).
+* Burlington Hydro (Ontario, Canada).
+* Consumers Energy (Michigan, USA), thank you Michael Phillippi ([@philliml74](https://github.com/philliml74)).
+* Elexicon Energy (Ontario, Canada), thank you Muhammad Aziz ([@rabbitholelabsinc](https://github.com/rabbitholelabsinc)).
+* Elk Energy (Ontario, Canada).
+* El Paso Electric (New Mexico / Texas, USA).
+* Enova (Ontario, Canada), thank you Kate Kennedy ([@kennek6](https://github.com/kennek6)).
+* Enwin (Ontario, Canada).
+* Eversource (Massachusetts, USA), thank you Devin Kelly ([@dwwkelly](https://github.com/dwwkelly)).
+* Festival Hydro (Ontario, Canada).
+* Grand Bridge Energy (Ontario, Canada), thank you Grant Emsley ([@grantemsley](https://github.com/grantemsley)).
+* Hydro Ottawa (Ontario, Canada), thank you Mike Wrightly ([@mikewrightly](https://github.com/mikewrightly)).
+* Kentucky Utilities (Kentucky, USA), thank you Tag Howard ([@jthoward64](https://github.com/jthoward64)).
+* London Hydro (Ontario, Canada).
+* Milton Hydro (Ontario, Canada), thank you Jeff Aycan ([@JAudi23](https://github.com/JAudi23)).
+* Newmarket-Tay (NT) Power (Ontario, Canada).
+* Niagara Peninsula Energy (Ontario, Canada).
+* Oakville Hydro (Ontario, Canada).
+* Oshawa Power (Ontario, Canada).
+* Toronto Hydro (Ontario, Canada), thank you Mathew Lisk ([@Mlisk](https://github.com/Mlisk)).
+
+### In Progress 🚧
+
+* Fortis Ontario (Algoma Power, Canadian Niagara Power, Cornwall Electric, Eastern Ontario Power) (Ontario, Canada), thank you William Seaton ([@william-seaton](https://github.com/william-seaton)).
+
+### Not Supported or Blocked
+
+* DTE Energy (Michigan, USA), [no Green Button Connect support](https://github.com/rocketraman/open-green-button/issues/12#issuecomment-5607485371).
+* Pacific Gas & Electric (California, USA), [not approved, registration On Hold](https://github.com/rocketraman/open-green-button/issues/3#issuecomment-5275109009).
+* Rhode Island Energy (Rhode Island, USA), [no longer supporting Green Button Connect](https://github.com/rocketraman/open-green-button/issues/37#issuecomment-5500880192).
+* SDG&E San Diego Gas & Electric (California, USA), [implementation requires an sFTP server](https://github.com/rocketraman/open-green-button/issues/11#issuecomment-5321240543).
+* Southern California Edison (SCE) (California, USA), [requires a 3rd party signed client certificate](https://github.com/rocketraman/open-green-button/issues/46), blocked on a certificate being donated to the project
 
 ### Water Data
 
