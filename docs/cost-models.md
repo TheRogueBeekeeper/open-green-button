@@ -45,7 +45,11 @@ from:
 
 We already have a smaller version of the same problem in the client: `tou.py` hardcodes the
 Ontario IESO time-of-use schedule, with a module docstring that says as much and defers the
-generalization to "when we onboard a utility on a different schedule."
+generalization to "when we onboard a utility on a different schedule." Since [HA #16][ha16]
+it also derives the OEB's holiday-pricing days from rules — Easter for Good Friday,
+positional Mondays, and the OEB's roll-forward for holidays that land on a weekend. That was
+the right fix for shipped behaviour, and it is exactly the kind of jurisdiction data this
+design moves out of the client.
 
 Meanwhile the rates are almost entirely **not per-utility**. Ontario's Regulated Price Plan
 is identical across Alectra, Burlington, Milton, NPEI, NT Power, and Oakville — six of the
@@ -112,9 +116,10 @@ Initial calculation registry:
 | `tiered` | consumption blocks with per-period allowances | Ontario RPP Tiered, many LDCs |
 | `time_of_use` | hour-of-day/day-of-week buckets | Ontario RPP TOU, Ontario ULO |
 
-`time_of_use` subsumes `tou.py`: the IESO schedule becomes catalog data rather than a
-hardcoded classifier, and both the estimator *and* the existing exact-bill TOU distribution
-in `_cost_distribution_for_period` read the schedule from the model.
+`time_of_use` subsumes `tou.py`: the IESO schedule — including its holiday-pricing days —
+becomes catalog data rather than a hardcoded classifier, and both the estimator *and* the
+existing exact-bill TOU distribution in `_cost_distribution_for_period` read the schedule from
+the model. See [Holidays](#holidays) for how those days are carried.
 
 ### Delivery
 
@@ -214,6 +219,122 @@ rates forward. This generalizes the "stop at the predicted period end" bound the
 and turns "the server hasn't been updated for the November rate change" into a visible,
 bounded condition instead of quietly wrong money.
 
+A `time_of_use` model has the same envelope; its `constants` carry a schedule instead of
+tiers:
+
+```jsonc
+{
+  "id": "ontario_rpp_tou",
+  "displayName": "Regulated Price Plan — Time-of-Use",
+  "calculation": "time_of_use",
+  "currency": "CAD",
+  "timezone": "America/Toronto",
+  "effectiveFrom": "2026-11-01",
+  "effectiveTo": "2027-04-30",
+  "seasons": [
+    { "id": "summer", "from": "05-01", "to": "10-31" },
+    { "id": "winter", "from": "11-01", "to": "04-30" }
+  ],
+  "constants": {
+    // Each day type lists contiguous local-time ranges covering 00:00–24:00 exactly.
+    "schedule": {
+      "summer": {
+        "weekday": [
+          { "from": "00:00", "to": "07:00", "bucket": "off_peak" },
+          { "from": "07:00", "to": "11:00", "bucket": "mid_peak" },
+          { "from": "11:00", "to": "17:00", "bucket": "on_peak" },
+          { "from": "17:00", "to": "19:00", "bucket": "mid_peak" },
+          { "from": "19:00", "to": "24:00", "bucket": "off_peak" }
+        ],
+        "nonWorkingDay": [
+          { "from": "00:00", "to": "24:00", "bucket": "off_peak" }
+        ]
+      },
+      "winter": { /* same shape: on_peak 07–11 and 17–19, mid_peak 11–17 */ }
+    },
+    // Observed dates that use the nonWorkingDay schedule. Inlined by the server from a
+    // shared holiday calendar — see Holidays below.
+    "holidays": ["2026-12-25", "2026-12-28", "2027-01-01", "2027-02-15", "2027-03-26"],
+    // Illustrative values. Used only by the open-period estimator: the exact-bill
+    // distribution takes per-bucket rates from the bill's own TOU line items, and reads
+    // only `schedule` and `holidays` from the model.
+    "rates": { "off_peak": 0.098, "mid_peak": 0.157, "on_peak": 0.203 }
+  },
+  "parameters": [ /* residualRatePerKwh, as in the tiered model */ ]
+}
+```
+
+The client's evaluation is: weekend or listed holiday ⇒ `nonWorkingDay`, otherwise
+`weekday`; then find the range containing the local hour. Nothing else about the calendar is
+the client's business.
+
+### Holidays
+
+`tou.py` hardcodes "holiday ⇒ off-peak all day", so the obvious schema would be a set of
+dates that are off-peak. That doesn't survive the next model. Under Ontario's Ultra-Low
+Overnight plan a holiday is priced like a weekend — ultra-low 23:00–07:00, weekend off-peak
+the rest of the day — not flat off-peak. So holidays select a **day type**, and each
+schedule says what that day type costs. RPP TOU's `nonWorkingDay` is one off-peak range; ULO's
+is two ranges with different buckets. The same holiday list serves both.
+
+**The catalog carries observed dates, not rules.** The client gets the final list of
+weekday dates that take holiday pricing — the OEB's own table, after its roll-forward — and
+does no date arithmetic. The alternative, shipping rule ids (`"easter-2"`,
+`"nth_weekday:2:mon:3"`, a roll-forward policy) for the client to expand, was rejected:
+
+- It is a rule language, which is what [the calculation is named, never
+  transmitted](#the-calculation-is-named-never-transmitted) exists to avoid. It would grow per
+  jurisdiction: US tariffs observe different holidays, some roll a Sunday holiday to Monday
+  and a Saturday one to Friday, and some don't roll at all. A date list expresses all of
+  these without a new client release.
+- Roll-forward edge cases are where the bugs are. The first revision of [HA #16][ha16]
+  priced only one of Christmas and Boxing Day when both land on a weekend (2021, 2027,
+  2032, …). Getting that right server-side, once, beats getting it right in every client
+  version still installed.
+- The regulator publishes dates, not rules. A list can be checked against the OEB table by
+  eye; a rule expansion can only be checked by running it.
+
+Server-side, calendars are shared per jurisdiction, like the models themselves, and models
+refer to them by id:
+
+```hocon
+holidayCalendars {
+  ontario_oeb {
+    source = "https://www.oeb.ca/consumer-information-and-protection/electricity-rates/holiday-schedule-time-use-and-ultra-low"
+    # Observed weekday dates, exactly as the OEB table lists them. Weekend holidays are
+    # already covered by the weekend rule; list only the weekday they roll onto.
+    dates = [
+      "2026-01-01", "2026-02-16", "2026-04-03", "2026-05-18", "2026-07-01",
+      "2026-08-03", "2026-09-07", "2026-10-12", "2026-12-25", "2026-12-28",
+      # 2027 …
+    ]
+  }
+}
+
+models = [
+  { id = "ontario_rpp_tou", calculation = "time_of_use", holidayCalendar = "ontario_oeb", … }
+]
+```
+
+`GET /cost-models/{utilityId}` inlines the calendar's dates into each model's
+`constants.holidays`, trimmed to that model's effective window. The wire format stays
+self-contained, so the client needs no second fetch and no calendar cache.
+
+`CostModelRegistry` validates calendars at boot alongside everything else:
+
+- every date is a weekday, so a weekend date is rejected as a likely mis-transcription;
+- the calendar covers every day of every model window that refers to it, through
+  `effectiveTo`. A calendar that runs out before the rates do fails the deploy rather than
+  quietly pricing next year's Canada Day as a weekday. For open-ended windows, coverage
+  must reach the end of the current year;
+- a server test expands the OEB rules (a Kotlin port of `ontario_holiday_pricing_dates`
+  from [HA #16][ha16]) for each listed year and asserts the conf matches. It is a typo
+  check on the data, not the source of truth: if the OEB ever departs from its own rule,
+  the conf wins and the test gets an explicit exception.
+
+Updating holidays is then the same as updating rates: add the year's dates when the OEB
+publishes them, `fly deploy`.
+
 ### Parameter types
 
 | `type` | Renders as | Extra fields |
@@ -270,8 +391,10 @@ costModels = ["ontario_rpp_tiered", "ontario_rpp_tou", "ontario_rpp_ulo"]
 `CostModelRegistry` validates at boot, as `UtilityRegistry` already does for
 `initialHistorySeconds` / `pollIntervalSeconds`: every id referenced by a utility exists,
 every `calculation` is one the current API version defines, tier and season coverage has no
-gaps or overlaps, `effectiveFrom` windows are contiguous. A bad rate order should fail the
-deploy, not reach a dashboard.
+gaps or overlaps, every TOU day type covers 24 hours with no gaps or overlaps,
+`effectiveFrom` windows are contiguous, and every referenced holiday calendar covers its
+models' windows (see [Holidays](#holidays)). A bad rate order should fail the deploy, not
+reach a dashboard.
 
 Rate updates then become: edit `cost-models.conf`, `fly deploy`. Every client picks it up
 within a poll.
@@ -345,10 +468,14 @@ Skipping the step is always allowed and leaves cost on today's summary-only beha
 1. **Catalog plumbing, no behaviour change.** `cost-models.conf`, registry, endpoint,
    `UtilityProfile.costModels`; client fetches and caches, does nothing with it. Verifiable
    in isolation.
-2. **`time_of_use` + retire `tou.py`.** Move the IESO schedule into the catalog and switch
-   `_cost_distribution_for_period` to read it. Pure refactor — existing exact-bill tests
-   must pass unchanged, which is the proof the schema is expressive enough before anything
-   depends on it.
+2. **`time_of_use` + retire `tou.py`.** Move the IESO schedule and the `ontario_oeb`
+   holiday calendar into the catalog and switch `_cost_distribution_for_period` to read
+   them. Pure refactor — existing exact-bill tests must pass unchanged, which is the proof
+   the schema is expressive enough before anything depends on it. That includes the holiday
+   cases from [HA #16][ha16], re-pointed at a model built from catalog data: the 2026 OEB
+   table, Canada Day off-peak all day, the 2021/2027 Saturday–Sunday and 2022 Sunday–Monday
+   Christmas/Boxing Day rolls, and Remembrance Day staying a weekday. Their client-side
+   rule expansion moves to the server test described under [Holidays](#holidays).
 3. **`tiered` + `flat` + open-period pricing**, Ontario RPP Tiered first, with the residual
    derived from the last bill and no user-facing parameters at all.
 4. **Parameter collection** in the config flow, for models the server can't fully specify.
@@ -366,6 +493,7 @@ general, and its cost is only justified once step 3 proves the pricing engine.
 | Rewrite corrupts the cumulative series | The two invariants above, each with a direct regression test — this is the known sharp edge |
 | Schema outgrows the parameter types | New rate *structures* are new `calculation` ids (a client release); resist making the parameter language expressive |
 | Catalog fetch fails | Cached catalog with its ETag stays usable; a fetch failure never fails a poll |
+| Holiday calendar not extended for a new year | Boot validation fails the deploy if a calendar ends before any model window that uses it; the rule-expansion test flags a mistyped or missing date |
 
 ## Open questions
 
@@ -384,3 +512,11 @@ general, and its cost is only justified once step 3 proves the pricing engine.
 5. **API versioning.** A new `calculation` id is additive and safe for old clients (they
    ignore models they can't evaluate, provided the server marks the minimum API version per
    model). Does that go on the model, or does it bump `CURRENT_API_VERSION`?
+6. **Ontario's Saturday–Sunday Christmas.** When Christmas is a Saturday and Boxing Day a
+   Sunday (2021, 2027, …), our reading of the OEB wording gives two observed days, Monday
+   and Tuesday. That reading is in [HA #16][ha16] but has not been checked against a
+   published OEB table for such a year. With dates in the catalog, the answer is a data
+   edit either way — but the 2027 entry should be confirmed against the OEB table before it
+   ships.
+
+[ha16]: https://github.com/rocketraman/open-green-button-homeassistant/pull/16
