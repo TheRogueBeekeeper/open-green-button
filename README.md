@@ -16,6 +16,7 @@ The hosted server is a **stateless OAuth proxy**: utilities require a stable pub
 * ✅ **Live!** Enwin (Ontario, Canada).
 * ✅ **Live!** Eversource (Massachusetts, USA), thank you Devin Kelly ([@dwwkelly](https://github.com/dwwkelly)).
 * ✅ **Live!** Festival Hydro (Ontario, Canada).
+* ✅ **Live!** Grand Bridge Energy (Ontario, Canada), thank you Grant Emsley ([@grantemsley](@grantemsley)).
 * ✅ **Live!** Hydro Ottawa (Ontario, Canada), thank you Mike Wrightly ([@mikewrightly](https://github.com/mikewrightly)).
 * ✅ **Live!** Kentucky Utilities (Kentucky, USA), thank you Tag Howard ([@jthoward64](https://github.com/jthoward64)).
 * ✅ **Live!** London Hydro (Ontario, Canada).
