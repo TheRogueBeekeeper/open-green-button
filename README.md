@@ -20,6 +20,7 @@ The following utilities are available to use now:
 * Enwin (Ontario, Canada).
 * Eversource (Massachusetts, USA), thank you Devin Kelly ([@dwwkelly](https://github.com/dwwkelly)).
 * Festival Hydro (Ontario, Canada).
+* Fortis Ontario (Algoma Power, Canadian Niagara Power, Cornwall Electric, Eastern Ontario Power) (Ontario, Canada), thank you William Seaton ([@william-seaton](https://github.com/william-seaton)).
 * Grand Bridge Energy (Ontario, Canada), thank you Grant Emsley ([@grantemsley](https://github.com/grantemsley)).
 * Hydro Ottawa (Ontario, Canada), thank you Mike Wrightly ([@mikewrightly](https://github.com/mikewrightly)).
 * Kentucky Utilities (Kentucky, USA), thank you Tag Howard ([@jthoward64](https://github.com/jthoward64)).
@@ -33,7 +34,7 @@ The following utilities are available to use now:
 
 ### In Progress 🚧
 
-* Fortis Ontario (Algoma Power, Canadian Niagara Power, Cornwall Electric, Eastern Ontario Power) (Ontario, Canada), thank you William Seaton ([@william-seaton](https://github.com/william-seaton)).
+None
 
 ### Not Supported or Blocked
 
