@@ -32,6 +32,7 @@ import kotlinx.html.title
 import kotlinx.html.ul
 import kotlinx.html.unsafe
 import org.opengb.config.AppConfig
+import org.opengb.utility.utilityListings
 
 /**
  * Static brand assets (favicons, manifest, logo) are copied into the classpath at `static/` by
@@ -224,7 +225,7 @@ private fun BODY.supportedUtilities(config: AppConfig) {
     div("container") {
       h2 { +"Supported utilities" }
       div("utilities") {
-        for (utility in config.utilities) {
+        for (utility in utilityListings(config.utilities)) {
           div("utility-card") {
             div("utility-name") { +utility.displayName }
             a(

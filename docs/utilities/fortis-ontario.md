@@ -7,7 +7,10 @@ Green Button services for Fortis Ontario are provided by Savage Data.  Fortis is
 * Algoma Power
 * Canadian Niagara Power
 * Cornwall Electric
-* *Eastern Ontario Power
+* Eastern Ontario Power
+
+Each is listed as its own utility (via `brands` in `utilities.conf`), but all share the single
+`fortis_ontario` registration.
 
 ## Information on File
 

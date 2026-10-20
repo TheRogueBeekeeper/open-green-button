@@ -67,16 +67,18 @@ fun Application.installConnect(deps: AppDeps) {
 
 private suspend fun io.ktor.server.routing.RoutingContext.handleScopeScreen(deps: AppDeps) {
   val utility = resolveUtility(deps) ?: return
+  val requestedId = call.parameters["utility"].orEmpty()
   // ha_nonce is present when Home Assistant initiates; absent when a Data Custodian sends the
   // customer here from their portal. Thread it through to `.../start` so the HA case is preserved.
   val haNonce = call.request.queryParameters["ha_nonce"]
   val continueUrl =
-    URLBuilder("${deps.config.server.publicBaseUrl}/connect/${utility.id}/start").apply {
+    URLBuilder("${deps.config.server.publicBaseUrl}/connect/$requestedId/start").apply {
       if (!haNonce.isNullOrBlank()) parameters.append("ha_nonce", haNonce)
     }.buildString()
   call.respondHtml {
     renderScopeScreen(
       utility = utility,
+      displayName = deps.registry.displayName(requestedId),
       continueUrl = continueUrl,
       scopeLines = ScopeSummary.describe(utility.registeredScope),
       historyText = humanizeWindow(utility.initialHistory),
@@ -91,6 +93,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleStart(deps: AppD
       PendingOAuth(
         utilityId = utility.id,
         haNonce = call.request.queryParameters["ha_nonce"],
+        displayName = deps.registry.displayName(call.parameters["utility"].orEmpty()),
       ),
     )
   val redirectUri = "${deps.config.server.publicBaseUrl}/connect/${utility.id}/callback"
@@ -152,7 +155,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleCallback(deps: A
     )
   call.respondHtml {
     renderClaimPage(
-      utilityDisplayName = utility.displayName,
+      utilityDisplayName = pending.displayName ?: utility.displayName,
       claimCode = claimCode,
       // No nonce ⇒ the flow was custodian-initiated (customer came from the utility's portal, not
       // from a waiting Home Assistant), so spell out the HA steps rather than assuming HA is open.
@@ -189,7 +192,7 @@ private suspend fun io.ktor.server.routing.RoutingContext.handleAuthorizeError(
   call.respondCallbackError(
     "Utility returned error: $error",
     detail = description.takeIf { trusted },
-    detailSource = utility.displayName,
+    detailSource = pending?.displayName ?: utility.displayName,
   )
 }
 
@@ -276,22 +279,23 @@ private suspend fun ApplicationCall.respondCallbackError(
  */
 private fun HTML.renderScopeScreen(
   utility: UtilityProfile,
+  displayName: String,
   continueUrl: String,
   scopeLines: List<String>,
   historyText: String,
 ) {
   head {
-    title { +"Share your ${utility.displayName} data" }
+    title { +"Share your $displayName data" }
     meta(charset = "utf-8")
     meta(name = "viewport", content = "width=device-width,initial-scale=1")
     style { unsafe { raw(CSS) } }
   }
   body {
-    h1 { +"Share your ${utility.displayName} data" }
+    h1 { +"Share your $displayName data" }
     p {
       +"You're about to let "
       strong { +"Open Green Button" }
-      +" access the following data from ${utility.displayName} on your behalf, so it can appear "
+      +" access the following data from $displayName on your behalf, so it can appear "
       +"in your Home Assistant Energy dashboard:"
     }
     ul("scope-list") {
@@ -299,11 +303,11 @@ private fun HTML.renderScopeScreen(
       li { +"Up to $historyText of history on the first sync" }
     }
     p("muted") {
-      +"You'll sign in at ${utility.displayName} and confirm on their page — we never see your "
+      +"You'll sign in at $displayName and confirm on their page — we never see your "
       +"utility password. Your readings and the access token are stored only in your Home "
       +"Assistant, never on our server."
     }
-    a(href = continueUrl, classes = "btn") { +"Continue to ${utility.displayName}" }
+    a(href = continueUrl, classes = "btn") { +"Continue to $displayName" }
     details {
       summary { +"Show the exact data-sharing scope" }
       div("code-box code-box--left") {

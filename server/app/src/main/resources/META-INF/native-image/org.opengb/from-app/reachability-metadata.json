@@ -2409,6 +2409,18 @@
       ]
     },
     {
+      "type": "org.opengb.utility.UtilityBrand",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "org.opengb.utility.UtilityProfile",
       "methods": [
         {
@@ -2416,6 +2428,7 @@
           "parameterTypes": [
             "java.lang.String",
             "java.lang.String",
+            "java.util.List",
             "java.lang.String",
             "java.lang.String",
             "java.lang.String",
