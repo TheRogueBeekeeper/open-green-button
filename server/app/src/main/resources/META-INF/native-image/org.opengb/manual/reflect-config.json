@@ -36,6 +36,12 @@
     "allDeclaredFields": true
   },
   {
+    "name": "org.opengb.utility.UtilityBrand",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
     "name": "org.opengb.utility.UtilityQuirks",
     "allDeclaredConstructors": true,
     "allDeclaredMethods": true,

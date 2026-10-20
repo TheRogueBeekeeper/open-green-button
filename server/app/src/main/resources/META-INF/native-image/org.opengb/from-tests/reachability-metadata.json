@@ -754,6 +754,9 @@
       "type": "java.lang.Enum"
     },
     {
+      "type": "java.lang.Iterable"
+    },
+    {
       "type": "java.lang.Module",
       "methods": [
         {
@@ -786,6 +789,9 @@
       "type": "java.sql.Time"
     },
     {
+      "type": "java.util.Collection"
+    },
+    {
       "type": "java.util.HashSet"
     },
     {
@@ -793,6 +799,9 @@
     },
     {
       "type": "java.util.LinkedHashSet"
+    },
+    {
+      "type": "java.util.List"
     },
     {
       "type": "java.util.SortedSet"
@@ -904,6 +913,12 @@
     },
     {
       "type": "kotlin.Unit"
+    },
+    {
+      "type": "kotlin.collections.Collection"
+    },
+    {
+      "type": "kotlin.collections.Iterable"
     },
     {
       "type": "kotlin.collections.List"
@@ -2581,6 +2596,9 @@
       "type": "org.opengb.TestCtx"
     },
     {
+      "type": "org.opengb.config.ClientAuthConfig"
+    },
+    {
       "type": "org.opengb.observability.AccessLogKt$installAccessLog$1",
       "fields": [
         {
@@ -2676,6 +2694,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "org.opengb.routes.ConnectBrandTestKt"
     },
     {
       "type": "org.opengb.routes.ConnectCallbackTestKt"
@@ -2841,6 +2862,20 @@
       ]
     },
     {
+      "type": "org.opengb.utility.TokenAuthStyle"
+    },
+    {
+      "type": "org.opengb.utility.UtilitiesConfig",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
       "type": "org.opengb.utility.UtilityApiConfig",
       "methods": [
         {
@@ -2870,6 +2905,47 @@
       ]
     },
     {
+      "type": "org.opengb.utility.UtilityBrand",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.opengb.utility.UtilityProfile",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "com.sksamuel.hoplite.Secret",
+            "java.lang.String",
+            "java.lang.String",
+            "org.opengb.utility.RefreshScope",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "org.opengb.utility.TokenAuthStyle",
+            "org.opengb.config.ClientAuthConfig",
+            "org.opengb.utility.UtilityApiConfig",
+            "org.opengb.utility.UtilityQuirks",
+            "int",
+            "kotlin.jvm.internal.DefaultConstructorMarker"
+          ]
+        }
+      ]
+    },
+    {
       "type": "org.opengb.utility.UtilityQuirks",
       "methods": [
         {
@@ -2888,6 +2964,9 @@
     },
     {
       "type": "org.opengb.utility.UtilityQuirksConfigTestKt"
+    },
+    {
+      "type": "org.opengb.utility.UtilityRegistryTestKt"
     },
     {
       "type": "org.opengb.utility.UtilitySummary",

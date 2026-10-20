@@ -14,6 +14,8 @@ data class PendingOAuth(
   val utilityId: String,
   /** Optional HA-side nonce passed through ?ha_nonce=... — purely informational, surfaced in logs. */
   val haNonce: String?,
+  /** The name the customer picked — a brand's name when they connected via a brand id. */
+  val displayName: String? = null,
   val createdAtEpochMs: Long = System.currentTimeMillis(),
 )
 

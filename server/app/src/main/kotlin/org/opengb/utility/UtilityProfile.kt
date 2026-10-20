@@ -13,6 +13,14 @@ import org.opengb.config.ClientAuthConfig
 data class UtilityProfile(
   val id: String,
   val displayName: String,
+  /**
+   * Customer-facing brands served by this one registration — e.g. Fortis Ontario operates Algoma
+   * Power, Canadian Niagara Power, etc. under a single Data Custodian and app registration. Each
+   * brand is listed separately (in `/utilities` and on the landing page) under its own id, and that
+   * id resolves to this profile everywhere. All OAuth and notification traffic still uses [id],
+   * since that's what the custodian registered our redirect and notify URIs under.
+   */
+  val brands: List<UtilityBrand> = emptyList(),
   val authorizeUrl: String,
   val tokenUrl: String,
   val clientId: String,
@@ -88,6 +96,9 @@ data class UtilityProfile(
   val pollIntervalSeconds: Long
     get() = parseHistoryWindowSeconds(pollInterval)
 }
+
+/** A brand listed under a parent [UtilityProfile]. See [UtilityProfile.brands]. */
+data class UtilityBrand(val id: String, val displayName: String)
 
 enum class TokenAuthStyle {
   /** HTTP Basic header carrying client_id:client_secret. */
